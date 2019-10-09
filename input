@@ -1,0 +1,15 @@
+select 
+  what, table.wut, 1000, 1.337, sum( avg( sum ) )
+FROM public.abk;
+
+select true;
+
+
+select *, abk.wut from abk;
+
+select a from ( select true );
+select 
+  ( select b.wut 
+      from ( select true ) as b( wut )
+  )
+from ( select true );
