@@ -2,8 +2,11 @@ const antlr4 = require('antlr4');
 const plpgsqlLexer = require('./js/plpgsqlLexer.js');
 const plpgsqlParser = require('./js/plpgsqlParser.js');
 const plpgsqlVisitor = require('./js/plpgsqlVisitor.js').plpgsqlVisitor;
+const plpgsqlListener = require('./js/plpgsqlVisitor.js').plpgsqlListener;
+const fs = require('fs');
 
-const input = 'select ( select b.wut from ( select true ) as b( wut ) ) from ( select true );';
+
+var input = fs.readFileSync( 'input' ).toString();
 
 const chars = new antlr4.InputStream(input);
 const lexer = new plpgsqlLexer.plpgsqlLexer(chars);
@@ -22,8 +25,11 @@ const tree = parser.root();
 
 
 class Visitor extends plpgsqlVisitor {
-   
+
   start(ctx) {
+    
+    // console.log( ctx.getText() );
+    
     return this.visitExpressionSequence(ctx);
   }
   
@@ -37,10 +43,10 @@ class Visitor extends plpgsqlVisitor {
     let code = '';
     
     for (let i = 0; i < ctx.getChildCount(); i++) {
-      code += "\n" + ' '.repeat( ctx.depth() ) + this.visit(ctx.getChild(i));
+      code +=  this.visit(ctx.getChild(i));
     }
 
-    return code.trim();
+    return code;
   }
 
   /**
@@ -50,17 +56,105 @@ class Visitor extends plpgsqlVisitor {
    * @returns {string}
    */
   visitTerminal(ctx) {
-    // console.log('----------------');
-    // console.log( ctx.parentCtx.start.type );
-    // console.log( ctx.parentCtx.parser.ruleNames[ ctx.parentCtx.start.type  ] );
+    
+    let out = '';
+    
+    if ( ctx.getText() === ',' ) {
+      return ',';
+    }
+    
+    // console.log( this.depth, this.linebreak );
+    
+    // console.log( 'terminal');
     
     
+    out += this.linebreak ? "\n" : '';
+    out += ' '.repeat( this.depth );
+    out += ctx.getText();
+    // out += this.linebreak ? "\n" : '';
     
-    return ctx.parentCtx.parser.ruleNames[ ctx.parentCtx.stop.type  ] +":   "  + ctx.getText();
+    // console.log( ctx.getParent().getChild() );
+        // 
+    return out;
   }
-
+  
+  visitColumn_list ( ctx ) {
+    
+    console.log('columnlist:', this.depth )
+    this.depth += 2;
+    let out = this.visitChildren(ctx);
+    this.depth -= 2;
+    console.log('/columnlist:', this.depth )
+    
+    return out;
+  }  
+  
+  visitFrom_clause ( ctx ) {
+    
+    console.log('from:', this.depth )
+    
+    this.depth += 2;
+    let out = this.visitChildren(ctx);
+    this.depth -= 2;
+    
+    return out;
+  }
+  
+  visitInto ( ctx ) {
+    
+    console.log('into:', this.depth );
+    
+    
+    this.depth += 2;
+    let out = this.visitChildren(ctx);
+    this.depth -= 2;
+    
+    console.log('/into:', this.depth );
+    
+    return out;
+  }
+  
+  
+  visitSelect ( ctx ) {
+    
+    console.log('select: ', this.depth );
+    
+    console.log( ctx.SELECT_KEYWORD().getText() )
+    
+    this.linebreak = true;
+    this.depth += 2;
+    
+    let out = this.visitChildren(ctx);
+    
+    this.depth -= 2;
+    
+    console.log('/select: ', this.depth );
+    
+    return ;
+    // return ctx.parent();
+  }  
+  
+  visitFrom ( ctx ) {
+    
+    console.log('from: ', this.depth );
+    
+    this.linebreak = true;
+    this.depth += 2;
+    
+    let out = this.visitChildren(ctx);
+    
+    this.depth -= 2;
+    
+    console.log('/from: ', this.depth );
+    
+    return out;
+  }
+  
 
 }
 
+Visitor.prototype.depth = 0;
+Visitor.prototype.linebreak = false;
+
 const v = new Visitor();
-console.log(v.visit( tree ));
+v.visit( tree );

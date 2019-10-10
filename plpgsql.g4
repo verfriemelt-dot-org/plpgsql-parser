@@ -6,13 +6,28 @@ statement:
   stmt_select SEMICOLON;
   
 
-stmt_select:
-  SELECT
-  column_list?
-  from_clause?;
+stmt_select:    
+  select                   
+  into?
+  from?
+  order?
+  limit?;
 
-from_clause
-  : FROM ( FQ_IDENTIFIER | expr ) table_alias?
+select: SELECT_KEYWORD column_list?;
+
+
+limit:
+  LIMIT INTEGER;
+
+order:
+  ORDER_BY expr_list ( ASC | DESC );
+
+into:
+  INTO column_list;
+  
+
+from
+  : FROM expr table_alias?
   ;
 
 function_call       : FQ_IDENTIFIER '(' expr_list ')' ;
@@ -45,15 +60,20 @@ number
   : INTEGER
   | FLOAT;
 
-SELECT              : S E L E C T;
+SELECT_KEYWORD      : S E L E C T;
 FROM                : F R O M;
 AS                  : A S;
+INTO                : I N T O;
+ORDER_BY            : O R D E R WHITESPACE B Y;
+ASC                 : A S C;
+DESC                : D E S C;
+LIMIT               : L I M I T;
 
-SEMICOLON           :';';
-COMMA               :',';
+SEMICOLON           : ';'; 
+COMMA               : ','  ;
 
 FQ_IDENTIFIER       : (IDENTIFIER '.')? IDENTIFIER;
-IDENTIFIER          : (LOWERCASE | UPPERCASE | '_' | DIGIT )+ ;
+IDENTIFIER          : ( LOWERCASE | UPPERCASE | '_' ) (LOWERCASE | UPPERCASE | '_' | DIGIT )* ;
 
 
 NEWLINE             : ('\r'? '\n' | '\r')+ -> skip;
