@@ -2,7 +2,7 @@ const antlr4 = require('antlr4');
 const plpgsqlLexer = require('./js/plpgsqlLexer.js');
 const plpgsqlParser = require('./js/plpgsqlParser.js');
 const plpgsqlVisitor = require('./js/plpgsqlVisitor.js').plpgsqlVisitor;
-const plpgsqlListener = require('./js/plpgsqlVisitor.js').plpgsqlListener;
+const plpgsqlListener = require('./js/plpgsqlListener.js').plpgsqlListener;
 const fs = require('fs');
 
 
@@ -24,137 +24,77 @@ const tree = parser.root();
 // console.log(tree.toStringTree(parser.ruleNames));
 
 
-class Visitor extends plpgsqlVisitor {
-
-  start(ctx) {
+class listener extends plpgsqlListener {
+  
+  constructor( res ) {
     
-    // console.log( ctx.getText() );
+    super();
     
-    return this.visitExpressionSequence(ctx);
+    this.skip = false;
+    this.result = res;
+    this.depth = 0;
+    
   }
   
-  /**
-   * Visits children of current node
-   *
-   * @param {object} ctx
-   * @returns {string}
-   */
-  visitChildren(ctx) {
-    let code = '';
+  format( input ) {
     
-    for (let i = 0; i < ctx.getChildCount(); i++) {
-      code +=  this.visit(ctx.getChild(i));
-    }
-
-    return code;
-  }
-
-  /**
-   * Visits a leaf node and returns a string
-   *
-   * @param {object} ctx
-   * @returns {string}
-   */
-  visitTerminal(ctx) {
-    
-    let out = '';
-    
-    if ( ctx.getText() === ',' ) {
-      return ',';
+    if ( this.skip ) {
+      return;
     }
     
-    // console.log( this.depth, this.linebreak );
+    if ( input == ',') {
+      this.result.push(',');
+      return;
+    }
     
-    // console.log( 'terminal');
-    
-    
-    out += this.linebreak ? "\n" : '';
-    out += ' '.repeat( this.depth );
-    out += ctx.getText();
-    // out += this.linebreak ? "\n" : '';
-    
-    // console.log( ctx.getParent().getChild() );
-        // 
-    return out;
+    this.result.push(
+        ' '.repeat( this.depth )
+      + input
+    );
   }
   
-  visitColumn_list ( ctx ) {
-    
-    console.log('columnlist:', this.depth )
+  visitTerminal( ctx ) {
+    this.format(ctx.getText());
+  }
+  
+  enterExpr() {
     this.depth += 2;
-    let out = this.visitChildren(ctx);
-    this.depth -= 2;
-    console.log('/columnlist:', this.depth )
-    
-    return out;
   }  
   
-  visitFrom_clause ( ctx ) {
-    
-    console.log('from:', this.depth )
-    
-    this.depth += 2;
-    let out = this.visitChildren(ctx);
+  exitExpr() {
     this.depth -= 2;
-    
-    return out;
   }
   
-  visitInto ( ctx ) {
+  enterColumn_list( ctx ) {
     
-    console.log('into:', this.depth );
+    console.log('columnlist');
     
+    
+    let child;
     
     this.depth += 2;
-    let out = this.visitChildren(ctx);
+    
+    for( child of ctx.children ) {
+       this.format( child.getText() );
+    }
+    
     this.depth -= 2;
-    
-    console.log('/into:', this.depth );
-    
-    return out;
+    this.skip = true;
   }
   
-  
-  visitSelect ( ctx ) {
-    
-    console.log('select: ', this.depth );
-    
-    console.log( ctx.SELECT_KEYWORD().getText() )
-    
-    this.linebreak = true;
-    this.depth += 2;
-    
-    let out = this.visitChildren(ctx);
-    
-    this.depth -= 2;
-    
-    console.log('/select: ', this.depth );
-    
-    return ;
-    // return ctx.parent();
-  }  
-  
-  visitFrom ( ctx ) {
-    
-    console.log('from: ', this.depth );
-    
-    this.linebreak = true;
-    this.depth += 2;
-    
-    let out = this.visitChildren(ctx);
-    
-    this.depth -= 2;
-    
-    console.log('/from: ', this.depth );
-    
-    return out;
+  exitColumn_list( ctx ) {
+    this.skip = false;
+    console.log('exit');
   }
   
 
 }
 
-Visitor.prototype.depth = 0;
-Visitor.prototype.linebreak = false;
+let result = [];
 
-const v = new Visitor();
-v.visit( tree );
+const l = new listener( result );
+
+antlr4.tree.ParseTreeWalker.DEFAULT.walk( l, tree );
+
+console.log(result);
+
